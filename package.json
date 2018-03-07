@@ -1,0 +1,28 @@
+{
+  "name": "papercut-box-art",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node node_modules/webpack/bin/webpack.js -w --devtool eval-cheap-module-source-map",
+    "build": "node node_modules/webpack/bin/webpack.js -p"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pissang/papercut-box-art.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pissang/papercut-box-art/issues"
+  },
+  "homepage": "https://github.com/pissang/papercut-box-art#readme",
+  "dependencies": {
+    "claygl": "^1.1.0",
+    "claygl-advanced-renderer": "git+https://github.com/pissang/claygl-advanced-renderer.git",
+    "d3-contour": "^1.2.0",
+    "d3-geo": "^1.9.1",
+    "simplex-noise": "^2.4.0",
+    "webpack": "^3.11.0"
+  }
+}
