@@ -23,6 +23,7 @@
     "d3-contour": "^1.2.0",
     "d3-geo": "^1.9.1",
     "simplex-noise": "^2.4.0",
-    "webpack": "^3.11.0"
+    "webpack": "^3.11.0",
+    "zrender": "^4.0.3"
   }
 }
