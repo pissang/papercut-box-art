@@ -17,7 +17,7 @@ export default function (config, seed) {
         }
     }
     var thresholds = Array.from(Array(levels).keys()).map(function (a) {
-        return a / levels;
+        return a / levels - config.randomOffset;
     });
 
     function create(img) {

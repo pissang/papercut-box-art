@@ -40,10 +40,11 @@ function createDefaultConfig() {
 
         paperCount: 5,
 
-        randomScale: 5,
+        randomScale: 3,
+        randomOffset: 0.5,
 
         paperGap: 0.5,
-        $paperGapRange: [0, 1],
+        $normalizedRange: [0, 1],
 
         paperDetail: './img/paper-detail.png',
         paperDetailTiling: 5,
@@ -302,12 +303,13 @@ var scenePanel = controlKit.addPanel({ label: 'Settings', width: 250 });
 
 scenePanel.addGroup({ label: 'Papers' })
     .addNumberInput(config, 'paperCount', { label: 'Levels', onFinish: app.methods.changeLevels, step: 1, min: 0 })
-    .addSlider(config, 'paperGap', '$paperGapRange', { label: 'Gap', onChange: app.methods.updatePapers })
+    .addSlider(config, 'paperGap', '$normalizedRange', { label: 'Gap', onChange: app.methods.updatePapers })
     .addCustomComponent(TextureUI, config, 'paperDetail', { label: 'Detail', onChange: app.methods.changePaperDetailTexture })
     .addNumberInput(config, 'paperDetailTiling', { label: 'Tiling', onChange: app.methods.updatePapers, step: 0.5, min: 0 });
 
 scenePanel.addGroup({ label: 'Random Generate' })
     .addNumberInput(config, 'randomScale', { label: 'Scale', onFinish: app.methods.updateSimplexCuts, step: 1, min: 0 })
+    .addSlider(config, 'randomOffset', '$normalizedRange', { label: 'Offset', onFinish: app.methods.updateSimplexCuts })
     .addButton('Generate', function () {
         updateRandomSeed();
         app.methods.changeLevels();
