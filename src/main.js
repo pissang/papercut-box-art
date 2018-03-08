@@ -47,7 +47,7 @@ function createDefaultConfig() {
         $normalizedRange: [0, 1],
 
         paperDetail: './img/paper-detail.png',
-        paperDetailTiling: 5,
+        paperDetailTiling: 8,
 
         layers: []
     };
