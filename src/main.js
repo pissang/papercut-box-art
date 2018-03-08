@@ -45,7 +45,7 @@ function createDefaultConfig() {
         paperGap: 0.5,
         $paperGapRange: [0, 1],
 
-        paperDetail: './img/free-vector-watercolor-paper-texture.jpg',
+        paperDetail: './img/paper-detail.png',
         paperDetailTiling: 5,
 
         layers: []
