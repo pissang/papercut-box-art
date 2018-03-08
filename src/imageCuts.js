@@ -4,11 +4,11 @@ export default function (img, cutoff, inverse, useGlobalColor) {
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
 
-    canvas.width = img.width;
-    canvas.height = img.height;
+    canvas.width = 2048;
+    canvas.height = 2048;
 
-    ctx.drawImage(img, 0, 0, img.width, img.height);
-    var imgData = ctx.getImageData(0, 0, img.width, img.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     cutoff = 255 * cutoff;
 
     for (var i = 0; i < imgData.data.length; i += 4) {

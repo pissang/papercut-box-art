@@ -1,9 +1,14 @@
 import ClayAdvancedRenderer from 'claygl-advanced-renderer';
-import { application, Vector3, util } from 'claygl';
+import { application, Vector3, util, Shader } from 'claygl';
 import { lerp, parse, stringify } from 'zrender/src/tool/color';
 import simplexCuts from './simplexCuts';
 import TextureUI from './ui/Texture';
 import imageCuts from './imageCuts';
+
+import standardExtCode from './standard_extend.glsl';
+Shader.import(standardExtCode);
+
+var shader = new Shader(Shader.source('clay.standard.vertex'), Shader.source('papercut.standard_ext'));
 
 function updateRandomSeed() {
     config.seed = Math.random();
@@ -35,7 +40,8 @@ function createDefaultConfig() {
         // paperColor1: '#b00',
         // paperColor2: '#900',
 
-        // paperTexture: './img/free-vector-watercolor-paper-texture.jpg',
+        paperDetail: './img/free-vector-watercolor-paper-texture.jpg',
+        paperDetailTiling: 5,
 
         layers: []
     };
@@ -43,7 +49,7 @@ function createDefaultConfig() {
     for (var i = 0; i < 10; i++) {
         config.layers.push({
             image: '',
-            color: parse(lerp(i / 9, ['#f00', '#b00', '#900'])).slice(0, 3),
+            color: parse(lerp(i / 9, ['#f00', '#900', '#300'])).slice(0, 3),
             lumCutoff: 0.5,
             inverse: false,
             useImage: false,
@@ -68,8 +74,8 @@ var app = application.create('#main', {
             postEffect: {
                 screenSpaceAmbientOcclusion: {
                     enable: true,
-                    radius: 1,
-                    intensity: 1.4,
+                    radius: 2,
+                    intensity: 1.1,
                     quality: 'high'
                 }
             }
@@ -79,20 +85,21 @@ var app = application.create('#main', {
 
         this._dirLight = app.createDirectionalLight([0, 0, 0], '#fff', 1);
         this._dirLight.shadowResolution = 1024;
-        app.methods.updateShadow();
-        app.methods.updateCamera();
-
         app.createAmbientLight('#fff', 0.3);
 
         this._updatePapersCount(app);
         this._updateSimplexCuts();
 
         this._groundPlane = app.createPlane({
+            shader: shader,
             roughness: 1
         });
         this._groundPlane.scale.set(11, 11, 1);
 
         this._updatePapers();
+
+        app.methods.updateShadow();
+        app.methods.updateCamera();
     },
 
     _updatePapersCount: function (app) {
@@ -104,6 +111,7 @@ var app = application.create('#main', {
         for (var i = 0; i < levels; i++) {
             if (!children[i]) {
                 var paper = app.createPlane({
+                    shader: shader,
                     diffuseMap: util.texture.createBlank(),
                     roughness: 1,
                     alphaCutoff: 0.9
@@ -118,21 +126,20 @@ var app = application.create('#main', {
         for (var i = levels; i < children.length; i++) {
             children[i].invisible = true;
         }
+
+        app.methods.changePaperDetailTexture();
     },
 
     _updateSimplexCuts: function () {
-        var self = this;
-        simplexCuts(config, config.seed).then(function (canvasList) {
-            simplexCutsCanvasList = canvasList;
+        simplexCutsCanvasList = simplexCuts(config, config.seed);
 
-            canvasList.forEach(function (canvas, idx) {
-                var diffuseMap = this._rootNode.childAt(idx).material.get('diffuseMap');
-                if (!uploadedImageList[idx]) {
-                    diffuseMap.image = canvas;
-                    diffuseMap.dirty();
-                }
-            }, self);
-        });
+        simplexCutsCanvasList.forEach(function (canvas, idx) {
+            var diffuseMap = this._rootNode.childAt(idx).material.get('diffuseMap');
+            if (!uploadedImageList[idx]) {
+                diffuseMap.image = canvas;
+                diffuseMap.dirty();
+            }
+        }, this);
     },
 
     _updatePapers: function () {
@@ -143,11 +150,13 @@ var app = application.create('#main', {
             if (!(uploadedImageList[idx] && config.layers[idx].useImage)) {
                 child.material.set('color', stringify(config.layers[idx].color, 'rgb'));
             }
+            child.material.set('detailMapTiling', [config.paperDetailTiling, config.paperDetailTiling]);
         });
-        this._advancedRenderer.render();
-
         this._groundPlane.position.z = -config.paperCount * gap;
         this._groundPlane.material.set('color', stringify(config.layers[config.layers.length - 1].color, 'rgb'));
+        this._groundPlane.material.set('detailMapTiling', [config.paperDetailTiling, config.paperDetailTiling]);
+
+        this._advancedRenderer.render();
     },
 
     loop: function () {},
@@ -198,7 +207,7 @@ var app = application.create('#main', {
             this._updatePapers();
         },
 
-        changePaperImage: function (app, idx) {
+        changePaperCutImage: function (app, idx) {
             var self = this;
             var child = this._rootNode.childAt(idx);
             if (!child) {
@@ -246,6 +255,28 @@ var app = application.create('#main', {
             uploadedImage.src = src;
 
             uploadedImageList[idx] = uploadedImage;
+        },
+
+        changePaperDetailTexture: function (app) {
+            var self = this;
+            function setDetailTexture(detailTexture) {
+                self._rootNode.eachChild(function (mesh) {
+                    if (mesh.material) {
+                        mesh.material.set('detailMap', detailTexture);
+                    }
+                });
+                self._groundPlane.material.set('detailMap', detailTexture);
+
+                self._advancedRenderer.render();
+            }
+            if (config.paperDetail && config.paperDetail !== 'none') {
+                app.loadTexture(config.paperDetail, {
+                    convertToPOT: true
+                }).then(setDetailTexture);
+            }
+            else {
+                setDetailTexture(null);
+            }
         }
     }
 });
@@ -259,7 +290,9 @@ var scenePanel = controlKit.addPanel({ label: 'Settings', width: 250 });
 
 scenePanel.addGroup({ label: 'Papers' })
     .addNumberInput(config, 'paperCount', { label: 'Levels', onFinish: app.methods.changeLevels, step: 1, min: 0 })
-    .addSlider(config, 'paperGap', '$paperGapRange', { label: 'Gap', onChange: app.methods.updatePapers });
+    .addSlider(config, 'paperGap', '$paperGapRange', { label: 'Gap', onChange: app.methods.updatePapers })
+    .addCustomComponent(TextureUI, config, 'paperDetail', { label: 'Detail', onChange: app.methods.changePaperDetailTexture })
+    .addNumberInput(config, 'paperDetailTiling', { label: 'Tiling', onChange: app.methods.updatePapers, step: 0.5, min: 0 });
 
 scenePanel.addGroup({ label: 'Random Generate' })
     .addNumberInput(config, 'randomScale', { label: 'Scale', onFinish: app.methods.updateSimplexCuts, step: 1, min: 0 })
@@ -279,7 +312,7 @@ scenePanel.addGroup({ label: 'Camera', enable: false })
 var group = scenePanel.addGroup({ label: 'Layers' });
 function createOnChangeFunction(idx) {
     return function () {
-        app.methods.changePaperImage(idx);
+        app.methods.changePaperCutImage(idx);
     };
 }
 for (var i = 0; i < config.layers.length; i++) {

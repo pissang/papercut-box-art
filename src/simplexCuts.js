@@ -2,10 +2,6 @@ import { contours } from 'd3-contour';
 import { geoPath } from 'd3-geo';
 import SimplexNoise from 'simplex-noise';
 
-import { core } from 'claygl';
-
-var imgCache = new core.LRU(10);
-
 export default function (config, seed) {
     var simplex = new SimplexNoise(function () {
         return seed;
@@ -43,8 +39,7 @@ export default function (config, seed) {
                 }
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                ctx.scale(canvas.width / m, canvas.height / n);
-                ctx.translate(-0.5, -0.5);
+                ctx.scale((canvas.width + 5)/ m, (canvas.height + 5) / n);
 
                 ctx.globalCompositeOperation = 'destination-out';
                 ctx.beginPath();
@@ -54,29 +49,5 @@ export default function (config, seed) {
             });
     }
 
-    return new Promise(function (resolve, reject) {
-        if (config.paperTexture) {
-            var imgPromise = imgCache.get(config.paperTexture);
-            if (!imgPromise) {
-                imgPromise = new Promise(function (resolve, reject) {
-                    var img = new Image();
-                    img.src = config.paperTexture;
-                    img.onload = function () {
-                        resolve(img);
-                    };
-                    img.onerror = function () {
-                        resolve(null);
-                    };
-                });
-                imgCache.put(config.paperTexture, imgPromise);
-            }
-            imgPromise.then(function (img) {
-                resolve(create(img));
-            });
-        }
-        else {
-            resolve(create(null));
-        }
-    });
-
+    return create(null);
 }
