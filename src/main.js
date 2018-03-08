@@ -323,21 +323,26 @@ scenePanel.addGroup({ label: 'Camera', enable: false })
     .addPad(config, 'cameraPosition', { label: 'Position', onChange: app.methods.updateCamera })
     .addNumberInput(config, 'cameraDistance', { label: 'Distance', onChange: app.methods.updateCamera, step: 0.5, min: 0 });
 
-var group = scenePanel.addGroup({ label: 'Layers' });
-function createOnChangeFunction(idx) {
-    return function () {
-        app.methods.changePaperCutImage(idx);
-    };
-}
-group.addButton('Generate Colors', function () {
+var colorGroup = scenePanel.addGroup({ label: 'Layer Colors' });
+colorGroup.addButton('Generate Colors', function () {
     createRandomColors();
     app.methods.updatePapers();
     controlKit.update();
 });
 for (var i = 0; i < config.layers.length; i++) {
+    colorGroup.addColor(config.layers[i], 'color', { label: 'Color ' + (i + 1), colorMode: 'rgb', onChange: app.methods.updatePapers  });
+}
+
+function createOnChangeFunction(idx) {
+    return function () {
+        app.methods.changePaperCutImage(idx);
+    };
+}
+
+var imageGroup = scenePanel.addGroup({ label: 'Layer Images' });
+for (var i = 0; i < config.layers.length; i++) {
     var onChange = createOnChangeFunction(i);
-    group.addSubGroup({ label: 'Layer ' + (i + 1), enable: i < 5 })
-        .addColor(config.layers[i], 'color', { label: 'Color', colorMode: 'rgb', onChange: app.methods.updatePapers })
+    imageGroup.addSubGroup({ label: 'Layer ' + (i + 1), enable: i < 5 })
         .addCustomComponent(TextureUI, config.layers[i], 'image', { label: 'Image', onChange: onChange })
         .addSlider(config.layers[i], 'lumCutoff', '$cutoffRange', { label: 'Cutoff', onChange: onChange })
         .addCheckbox(config.layers[i], 'inverse', { label: 'Inverse', onChange: onChange})
