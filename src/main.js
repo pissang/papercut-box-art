@@ -4,6 +4,15 @@ import { lerp, parse, stringify } from 'zrender/src/tool/color';
 import simplexCuts from './simplexCuts';
 import TextureUI from './ui/Texture';
 import imageCuts from './imageCuts';
+import * as colorBrewer from 'd3-scale-chromatic';
+
+var brewerMethods = [
+    'BrBG', 'PRGn', 'PiYG', 'PuOr', 'RdBu', 'RdGy', 'RdYlBu', 'RdYlGn', 'Spectral',
+    'Viridis', 'Inferno', 'Magma', 'Plasma', 'Warm', 'Cool', 'Rainbow', 'YlGnBu', 'RdPu', 'PuRd',
+].map(function (a) {
+    return 'interpolate' + a;
+});
+// var brewerMethods = Object.keys(colorBrewer);
 
 import standardExtCode from './standard_extend.glsl';
 Shader.import(standardExtCode);
@@ -36,10 +45,6 @@ function createDefaultConfig() {
         paperGap: 0.5,
         $paperGapRange: [0, 1],
 
-        // paperColor0: '#f00',
-        // paperColor1: '#b00',
-        // paperColor2: '#900',
-
         paperDetail: './img/free-vector-watercolor-paper-texture.jpg',
         paperDetailTiling: 5,
 
@@ -49,7 +54,6 @@ function createDefaultConfig() {
     for (var i = 0; i < 10; i++) {
         config.layers.push({
             image: '',
-            color: parse(lerp(i / 9, ['#f00', '#900', '#300'])).slice(0, 3),
             lumCutoff: 0.5,
             inverse: false,
             useImage: false,
@@ -60,7 +64,15 @@ function createDefaultConfig() {
     return config;
 }
 
+function createRandomColors() {
+    var method = colorBrewer[brewerMethods[Math.round(Math.random() * (brewerMethods.length - 1))]];
+    config.layers.forEach(function (layer, idx) {
+        layer.color = parse(method(idx / 9)).slice(0, 3);
+    });
+};
+
 var config = createDefaultConfig();
+createRandomColors();
 
 var app = application.create('#main', {
 
@@ -153,7 +165,7 @@ var app = application.create('#main', {
             child.material.set('detailMapTiling', [config.paperDetailTiling, config.paperDetailTiling]);
         });
         this._groundPlane.position.z = -config.paperCount * gap;
-        this._groundPlane.material.set('color', stringify(config.layers[config.layers.length - 1].color, 'rgb'));
+        this._groundPlane.material.set('color', stringify(config.layers[config.paperCount - 1].color, 'rgb'));
         this._groundPlane.material.set('detailMapTiling', [config.paperDetailTiling, config.paperDetailTiling]);
 
         this._advancedRenderer.render();
@@ -315,6 +327,11 @@ function createOnChangeFunction(idx) {
         app.methods.changePaperCutImage(idx);
     };
 }
+group.addButton('Generate Colors', function () {
+    createRandomColors();
+    app.methods.updatePapers();
+    controlKit.update();
+});
 for (var i = 0; i < config.layers.length; i++) {
     var onChange = createOnChangeFunction(i);
     group.addSubGroup({ label: 'Layer ' + (i + 1), enable: i < 5 })
