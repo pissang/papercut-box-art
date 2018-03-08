@@ -1,62 +1,60 @@
 import ClayAdvancedRenderer from 'claygl-advanced-renderer';
-import { application, Vector3 } from 'claygl';
-import { contours } from 'd3-contour';
-import { geoPath } from 'd3-geo';
-import SimplexNoise from 'simplex-noise';
-import { lerp } from 'zrender/src/tool/color';
+import { application, Vector3, util } from 'claygl';
+import { lerp, parse, stringify } from 'zrender/src/tool/color';
+import simplexCuts from './simplexCuts';
+import TextureUI from './ui/Texture';
+import imageCuts from './imageCuts';
 
-function simplexCuts() {
-    var simplex = new SimplexNoise(Math.random);
-    var values = [];
-    var m = 200;
-    var n = 200;
-    var scale = Math.max(config.randomScale, 1);
-    var levels = Math.max(config.randomLevel, 1);
-    for (var x = 0; x < m; x++) {
-        for (var y = 0; y < n; y++) {
-            values.push(simplex.noise2D(x / m * scale, y / n * scale));
-        }
-    }
-    var thresholds = Array.from(Array(levels).keys()).map(function (a) {
-        return a / levels;
-    });
-
-    return contours()
-        .size([m, n])
-        .thresholds(thresholds)(values)
-        .map(function (contour) {
-            var canvas = document.createElement('canvas');
-            var ctx = canvas.getContext('2d');
-            canvas.width = 2048;
-            canvas.height = 2048;
-            ctx.scale(canvas.width / m, canvas.height / n);
-            ctx.translate(-0.5, -0.5);
-            var path = geoPath(null, ctx);
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.beginPath();
-            path(contour);
-            ctx.fill();
-            return canvas;
-        });
+function updateRandomSeed() {
+    config.seed = Math.random();
 }
 
-var config = {
-    shadowDirection: [0, 0],
-    shadowKernelSize: 16,
-    shadowBlurSize: 10,
+var simplexCutsCanvasList = [];
+var uploadedImageList = [];
 
-    randomScale: 5,
-    randomLevel: 7,
+function createDefaultConfig() {
+    var config = {
 
-    paperDistance: 0.5,
-    $paperDistanceRange: [0, 1],
+        seed: Math.random(),
 
-    paperColor0: '#f00',
-    paperColor1: '#d00',
-    paperColor2: '#a00'
-};
+        shadowDirection: [0, 0],
+        shadowKernelSize: 16,
+        shadowBlurSize: 10,
+
+        cameraPosition: [0, 0],
+        cameraDistance: 10,
+
+        paperCount: 5,
+
+        randomScale: 5,
+
+        paperGap: 0.5,
+        $paperGapRange: [0, 1],
+
+        // paperColor0: '#f00',
+        // paperColor1: '#b00',
+        // paperColor2: '#900',
+
+        // paperTexture: './img/free-vector-watercolor-paper-texture.jpg',
+
+        layers: []
+    };
+
+    for (var i = 0; i < 10; i++) {
+        config.layers.push({
+            image: '',
+            color: parse(lerp(i / 9, ['#f00', '#b00', '#900'])).slice(0, 3),
+            lumCutoff: 0.5,
+            inverse: false,
+            useImage: false,
+
+            $cutoffRange: [0, 1]
+        });
+    }
+    return config;
+}
+
+var config = createDefaultConfig();
 
 var app = application.create('#main', {
 
@@ -65,9 +63,7 @@ var app = application.create('#main', {
     init: function (app) {
         this._advancedRenderer = new ClayAdvancedRenderer(app.renderer, app.scene, app.timeline, {
             shadow: {
-                enable: true,
-                kernelSize: config.shadowKernelSize,
-                blurSize: config.shadowBlurSize
+                enable: true
             },
             postEffect: {
                 screenSpaceAmbientOcclusion: {
@@ -81,51 +77,77 @@ var app = application.create('#main', {
 
         this._camera = app.createCamera([0, 0, 10], [0, 0, 0]);
 
-        this._dirLight = app.createDirectionalLight([
-            config.shadowDirection[0], config.shadowDirection[1], -1
-        ], '#fff', 0.7);
+        this._dirLight = app.createDirectionalLight([0, 0, 0], '#fff', 1);
         this._dirLight.shadowResolution = 1024;
+        app.methods.updateShadow();
+        app.methods.updateCamera();
 
         app.createAmbientLight('#fff', 0.3);
 
-        this._createPapers(app);
+        this._updatePapersCount(app);
+        this._updateSimplexCuts();
 
-        this._advancedRenderer.render();
-    },
-
-    _createPapers: function (app) {
-        var canvas = simplexCuts();
-        app.scene.remove(this._rootNode);
-        this._rootNode = app.createNode();
-
-        canvas.forEach(function (canvas, idx) {
-            var paper = app.createPlane({
-                diffuseMap: canvas,
-                roughness: 1,
-                alphaCutoff: 0.9
-            }, this._rootNode);
-            paper.material.define('fragment', 'ALPHA_TEST');
-            paper.scale.set(10, 10, 1);
-        }, this);
-
-        var lastPaper = app.createPlane({
-            roughness: 1,
-            alphaCutoff: 0.9
-        }, this._rootNode);
-        lastPaper.material.define('fragment', 'ALPHA_TEST');
-        lastPaper.scale.set(15, 15, 1);
+        this._groundPlane = app.createPlane({
+            roughness: 1
+        });
+        this._groundPlane.scale.set(11, 11, 1);
 
         this._updatePapers();
     },
 
+    _updatePapersCount: function (app) {
+        this._rootNode = this._rootNode || app.createNode();
+
+        var levels = Math.max(Math.min(Math.round(config.paperCount), 10), 1);
+        var children = this._rootNode.children();
+
+        for (var i = 0; i < levels; i++) {
+            if (!children[i]) {
+                var paper = app.createPlane({
+                    diffuseMap: util.texture.createBlank(),
+                    roughness: 1,
+                    alphaCutoff: 0.9
+                }, this._rootNode);
+                paper.material.define('fragment', 'ALPHA_TEST');
+                paper.scale.set(10, 10, 1);
+            }
+            else {
+                children[i].invisible = false;
+            }
+        }
+        for (var i = levels; i < children.length; i++) {
+            children[i].invisible = true;
+        }
+    },
+
+    _updateSimplexCuts: function () {
+        var self = this;
+        simplexCuts(config, config.seed).then(function (canvasList) {
+            simplexCutsCanvasList = canvasList;
+
+            canvasList.forEach(function (canvas, idx) {
+                var diffuseMap = this._rootNode.childAt(idx).material.get('diffuseMap');
+                if (!uploadedImageList[idx]) {
+                    diffuseMap.image = canvas;
+                    diffuseMap.dirty();
+                }
+            }, self);
+        });
+    },
+
     _updatePapers: function () {
         var children = this._rootNode.children();
+        var gap = config.paperGap + 0.1;
         children.forEach(function (child, idx) {
-            child.position.z = -idx * (config.paperDistance + 0.1);
-            child.material.set('color', lerp(
-                idx / children.length, [config.paperColor0, config.paperColor1, config.paperColor2]
-            ));
+            child.position.z = -idx * gap;
+            if (!(uploadedImageList[idx] && config.layers[idx].useImage)) {
+                child.material.set('color', stringify(config.layers[idx].color, 'rgb'));
+            }
         });
+        this._advancedRenderer.render();
+
+        this._groundPlane.position.z = -config.paperCount * gap;
+        this._groundPlane.material.set('color', stringify(config.layers[config.layers.length - 1].color, 'rgb'));
     },
 
     loop: function () {},
@@ -141,7 +163,7 @@ var app = application.create('#main', {
                 -config.shadowDirection[1],
                 1
             );
-            this._dirLight.lookAt(Vector3.ZERO);
+            this._dirLight.lookAt(Vector3.ZERO, Vector3.UP);
             this._advancedRenderer.setShadow({
                 kernelSize: config.shadowKernelSize,
                 blurSize: Math.max(config.shadowBlurSize, 1)
@@ -149,15 +171,82 @@ var app = application.create('#main', {
             this._advancedRenderer.render();
         },
 
-        generate: function (app) {
-            this._createPapers(app);
+        updateCamera: function () {
+            // TODO RESET CAMERA
+            var z = config.cameraDistance;
+            var x = config.cameraPosition[0] * z;
+            var y = config.cameraPosition[1] * z;
+
+            this._camera.position.set(x, y, z);
+            this._camera.lookAt(Vector3.ZERO, Vector3.UP);
+
             this._advancedRenderer.render();
+        },
+
+        changeLevels: function (app) {
+            this._updatePapersCount(app);
+            this._updateSimplexCuts();
+            this._updatePapers();
+        },
+
+        updateSimplexCuts: function () {
+            this._updateSimplexCuts();
+            this._updatePapers();
         },
 
         updatePapers: function () {
             this._updatePapers();
-            this._advancedRenderer.render();
         },
+
+        changePaperImage: function (app, idx) {
+            var self = this;
+            var child = this._rootNode.childAt(idx);
+            if (!child) {
+                return;
+            }
+
+            var diffuseTexture = child.material.get('diffuseMap');
+
+            var uploadedImage = uploadedImageList[idx];
+            var layer = config.layers[idx];
+            var src = layer.image;
+            if (!src || src === 'none') {
+                diffuseTexture.image = simplexCutsCanvasList[idx];
+                diffuseTexture.dirty();
+                uploadedImageList[idx] = null;
+
+                self._advancedRenderer.render();
+            }
+            if (!uploadedImage) {
+                uploadedImage = new Image();
+            }
+
+            function doCut() {
+                var canvas = imageCuts(
+                    uploadedImage, layer.lumCutoff, layer.inverse, !layer.useImage
+                );
+                if (layer.useImage) {
+                    child.material.set('color', '#fff');
+                }
+                else {
+                    child.material.set('color', stringify(layer.color, 'rgb'));
+                }
+                diffuseTexture.image = canvas;
+                diffuseTexture.dirty();
+
+                self._advancedRenderer.render();
+            }
+            if (uploadedImage.src === src && uploadedImage.width) {
+                doCut();
+                return;
+            }
+            uploadedImage.onload = function () {
+                doCut();
+            };
+            uploadedImage.src = src;
+
+            uploadedImageList[idx] = uploadedImage;
+        }
     }
 });
 
@@ -168,17 +257,41 @@ var controlKit = new ControlKit({
 
 var scenePanel = controlKit.addPanel({ label: 'Settings', width: 250 });
 
-scenePanel.addGroup({ label: 'Generate' })
-    .addNumberInput(config, 'randomScale', { label: 'Scale', onFinish: app.methods.generate, step: 1, min: 0 })
-    .addNumberInput(config, 'randomLevel', { label: 'Levels', onFinish: app.methods.generate, step: 1, min: 0 })
-    .addSlider(config, 'paperDistance', '$paperDistanceRange', { label: 'Distance', onChange: app.methods.updatePapers })
-    .addColor(config, 'paperColor0', { label: 'Color 0', onChange: app.methods.updatePapers })
-    .addColor(config, 'paperColor1', { label: 'Color 1', onChange: app.methods.updatePapers })
-    .addColor(config, 'paperColor2', { label: 'Color 2', onChange: app.methods.updatePapers });
+scenePanel.addGroup({ label: 'Papers' })
+    .addNumberInput(config, 'paperCount', { label: 'Levels', onFinish: app.methods.changeLevels, step: 1, min: 0 })
+    .addSlider(config, 'paperGap', '$paperGapRange', { label: 'Gap', onChange: app.methods.updatePapers });
 
-scenePanel.addGroup({ label: 'Directional Shadow' })
+scenePanel.addGroup({ label: 'Random Generate' })
+    .addNumberInput(config, 'randomScale', { label: 'Scale', onFinish: app.methods.updateSimplexCuts, step: 1, min: 0 })
+    .addButton('Generate', function () {
+        updateRandomSeed();
+        app.methods.changeLevels();
+    });
+
+scenePanel.addGroup({ label: 'Shadow', enable: false })
     .addPad(config, 'shadowDirection', { label: 'Direction', onChange: app.methods.updateShadow })
     .addNumberInput(config, 'shadowBlurSize', { label: 'Blur Size', onChange: app.methods.updateShadow, step: 0.5, min: 0 });
 
+scenePanel.addGroup({ label: 'Camera', enable: false })
+    .addPad(config, 'cameraPosition', { label: 'Position', onChange: app.methods.updateCamera })
+    .addNumberInput(config, 'cameraDistance', { label: 'Distance', onChange: app.methods.updateCamera, step: 0.5, min: 0 });
+
+var group = scenePanel.addGroup({ label: 'Layers' });
+function createOnChangeFunction(idx) {
+    return function () {
+        app.methods.changePaperImage(idx);
+    };
+}
+for (var i = 0; i < config.layers.length; i++) {
+    var onChange = createOnChangeFunction(i);
+    group.addSubGroup({ label: 'Layer ' + (i + 1), enable: i < 5 })
+        .addColor(config.layers[i], 'color', { label: 'Color', colorMode: 'rgb', onChange: app.methods.updatePapers })
+        .addCustomComponent(TextureUI, config.layers[i], 'image', { label: 'Image', onChange: onChange })
+        .addSlider(config.layers[i], 'lumCutoff', '$cutoffRange', { label: 'Cutoff', onChange: onChange })
+        .addCheckbox(config.layers[i], 'inverse', { label: 'Inverse', onChange: onChange})
+        .addCheckbox(config.layers[i], 'useImage', { label: 'Use Image', onChange: onChange});
+}
 
 window.addEventListener('resize', function () { app.resize(); app.methods.render(); } );
+
+document.getElementById('loading').style.display = 'none';

@@ -2,26 +2,22 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paper Cut Box</title>
 </head>
 <body>
-    <style>
-        html, body, #main {
-            overflow: hidden;
-            margin: 0;
-            height: 100%;
-            background: #111;
-        }
-        #main {
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            right: 250;
-
-        }
-    </style>
+    <link rel="stylesheet" href="./style/main.css">
+    <div id="loading">
+        <div class="sk-folding-cube">
+            <div class="sk-cube1 sk-cube"></div>
+            <div class="sk-cube2 sk-cube"></div>
+            <div class="sk-cube4 sk-cube"></div>
+            <div class="sk-cube3 sk-cube"></div>
+        </div>
+        <div id="loading-text">LOADING</div>
+    </div>
     <div id="main"></div>
     <script src="./lib/controlKit.js"></script>
+    <script src="./lib/FileAPI.js"></script>
     <link rel="stylesheet" href="./style/controlKit.css">
     <script src="./dist/bundle.js"></script>
 </body>
