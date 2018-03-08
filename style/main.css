@@ -15,6 +15,31 @@ html, body, #main {
 }
 
 
+#credits {
+    position: absolute;
+    width: 300px;
+    bottom: 10px;
+    left: 50%;
+    margin-left: -200px;
+    text-align: center;
+    z-index: 1000;
+    font-size: 12px;
+    color: #333;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 5px;
+    padding: 5px;
+}
+
+#credits .source {
+    color: #000;
+    font-size: 14px;
+    margin-right: 14px;
+}
+#credits a {
+    color: #111;
+}
+
+
 #controlKit .panel .group-list .group .sub-group-list .sub-group ul li.drag-hover {
     background: #585656;
 }
