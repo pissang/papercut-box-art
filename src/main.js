@@ -95,7 +95,7 @@ var app = application.create('#main', {
 
         this._camera = app.createCamera([0, 0, 10], [0, 0, 0]);
 
-        this._dirLight = app.createDirectionalLight([0, 0, 0], '#fff', 1);
+        this._dirLight = app.createDirectionalLight([0, 0, 0], '#fff', 0.7);
         this._dirLight.shadowResolution = 1024;
         app.createAmbientLight('#fff', 0.3);
 
