@@ -185,11 +185,14 @@ var app = application.create('#main', {
         },
 
         updateShadow: function () {
-            this._dirLight.position.set(
-                -config.shadowDirection[0],
-                -config.shadowDirection[1],
-                1
-            );
+            var x = -config.shadowDirection[0];
+            var y = -config.shadowDirection[1];
+            var lightDir = new Vector3(x, y, 1).normalize();
+            var normal = Vector3.POSITIVE_Z;
+            var ndl = Vector3.dot(lightDir, normal);
+            this._dirLight.intensity = 0.7 / ndl;
+
+            this._dirLight.position.set(x, y, 1);
             this._dirLight.lookAt(Vector3.ZERO, Vector3.UP);
             this._advancedRenderer.setShadow({
                 kernelSize: config.shadowKernelSize,
