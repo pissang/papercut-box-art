@@ -39,6 +39,7 @@ function createDefaultConfig() {
         cameraDistance: 10,
 
         paperCount: 5,
+        paperAspect: 1,
 
         randomScale: 3,
         randomOffset: 0.5,
@@ -166,12 +167,14 @@ var app = application.create('#main', {
         var gap = config.paperGap + 0.1;
         children.forEach(function (child, idx) {
             child.position.z = -idx * gap;
+            child.scale.x = 10 * config.paperAspect;
             if (!(uploadedImageList[idx] && config.layers[idx].useImage)) {
                 child.material.set('color', stringify(config.layers[idx].color, 'rgb'));
             }
             child.material.set('detailMapTiling', [config.paperDetailTiling, config.paperDetailTiling]);
         });
         this._groundPlane.position.z = -config.paperCount * gap;
+        this._groundPlane.scale.x = 11 * config.paperAspect;
         this._groundPlane.material.set('color', stringify(config.layers[
             Math.min(config.paperCount, config.layers.length - 1)
         ].color, 'rgb'));
@@ -316,6 +319,7 @@ var scenePanel = controlKit.addPanel({ label: 'Settings', width: 250 });
 
 scenePanel.addGroup({ label: 'Papers' })
     .addNumberInput(config, 'paperCount', { label: 'Levels', onFinish: app.methods.changeLevels, step: 1, min: 0 })
+    .addNumberInput(config, 'paperAspect', { label: 'Aspect', onChange: app.methods.updatePapers, step: 0.1, min: 0 })
     .addSlider(config, 'paperGap', '$paperGapRange', { label: 'Gap', onChange: app.methods.updatePapers })
     .addCustomComponent(TextureUI, config, 'paperDetail', { label: 'Detail', onChange: app.methods.changePaperDetailTexture })
     .addNumberInput(config, 'paperDetailTiling', { label: 'Tiling', onChange: app.methods.updatePapers, step: 0.5, min: 0 });
