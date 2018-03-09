@@ -166,7 +166,9 @@ var app = application.create('#main', {
             child.material.set('detailMapTiling', [config.paperDetailTiling, config.paperDetailTiling]);
         });
         this._groundPlane.position.z = -config.paperCount * gap;
-        this._groundPlane.material.set('color', stringify(config.layers[config.paperCount - 1].color, 'rgb'));
+        this._groundPlane.material.set('color', stringify(config.layers[
+            Math.min(config.paperCount, config.layers.length - 1)
+        ].color, 'rgb'));
         this._groundPlane.material.set('detailMapTiling', [config.paperDetailTiling, config.paperDetailTiling]);
 
         this._advancedRenderer.render();
