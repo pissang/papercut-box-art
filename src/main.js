@@ -85,6 +85,9 @@ var app = application.create('#main', {
                 enable: true
             },
             postEffect: {
+                bloom: {
+                    enable: false
+                },
                 screenSpaceAmbientOcclusion: {
                     enable: true,
                     radius: 2,

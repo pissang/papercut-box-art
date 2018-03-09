@@ -203,6 +203,9 @@ vec2 parallaxUv(vec2 uv, vec3 viewDir)
 void main() {
 
     vec4 albedoColor = vec4(color, alpha);
+#ifdef SRGB_DECODE
+    albedoColor = sRGBToLinear(albedoColor);
+#endif
 
 #ifdef VERTEX_COLOR
     albedoColor *= v_Color;
