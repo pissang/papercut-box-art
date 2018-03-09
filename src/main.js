@@ -330,7 +330,7 @@ colorGroup.addButton('Generate Colors', function () {
     controlKit.update();
 });
 for (var i = 0; i < config.layers.length; i++) {
-    colorGroup.addColor(config.layers[i], 'color', { label: 'Color ' + (i + 1), colorMode: 'rgb', onChange: app.methods.updatePapers  });
+    colorGroup.addColor(config.layers[i], 'color', { label: 'Layer ' + (i + 1), colorMode: 'rgb', onChange: app.methods.updatePapers  });
 }
 
 function createOnChangeFunction(idx) {
