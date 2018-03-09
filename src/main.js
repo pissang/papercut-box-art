@@ -68,7 +68,7 @@ function createDefaultConfig() {
 function createRandomColors() {
     var method = colorBrewer[brewerMethods[Math.round(Math.random() * (brewerMethods.length - 1))]];
     config.layers.forEach(function (layer, idx) {
-        layer.color = parse(method(idx / 9)).slice(0, 3);
+        layer.color = parse(method(1 - idx / 9)).slice(0, 3);
     });
 };
 
@@ -340,6 +340,16 @@ colorGroup.addButton('Generate Colors', function () {
 for (var i = 0; i < config.layers.length; i++) {
     colorGroup.addColor(config.layers[i], 'color', { label: 'Layer ' + (i + 1), colorMode: 'rgb', onChange: app.methods.updatePapers  });
 }
+colorGroup.addButton('Revert Colors', function () {
+    var colors = config.layers.map(function (layer) {
+        return layer.color;
+    }).reverse();
+    config.layers.forEach(function (layer, idx) {
+        layer.color = colors[idx];
+    });
+    app.methods.updatePapers();
+    controlKit.update();
+});
 
 function createOnChangeFunction(idx) {
     return function () {

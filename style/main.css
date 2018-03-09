@@ -17,10 +17,10 @@ html, body, #main {
 
 #credits {
     position: absolute;
-    width: 300px;
+    width: 350px;
     bottom: 10px;
     left: 50%;
-    margin-left: -200px;
+    margin-left: -250px;
     text-align: center;
     z-index: 1000;
     font-size: 12px;
