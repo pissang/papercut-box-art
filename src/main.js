@@ -42,9 +42,10 @@ function createDefaultConfig() {
 
         randomScale: 3,
         randomOffset: 0.5,
+        $randomOffsetRange: [0, 1],
 
         paperGap: 0.5,
-        $normalizedRange: [0, 1],
+        $paperGapRange: [0, 2],
 
         paperDetail: './img/paper-detail.png',
         paperDetailTiling: 8,
@@ -96,6 +97,8 @@ var app = application.create('#main', {
                 }
             }
         });
+        // TODO
+        this._advancedRenderer._renderMain._compositor._compositeNode.undefine('TONEMAPPING');
 
         this._camera = app.createCamera([0, 0, 10], [0, 0, 0]);
 
@@ -240,6 +243,14 @@ var app = application.create('#main', {
             var uploadedImage = uploadedImageList[idx];
             var layer = config.layers[idx];
             var src = layer.image;
+
+            if (layer.useImage) {
+                child.material.set('color', '#fff');
+            }
+            else {
+                child.material.set('color', stringify(layer.color, 'rgb'));
+            }
+
             if (!src || src === 'none') {
                 diffuseTexture.image = simplexCutsCanvasList[idx];
                 diffuseTexture.dirty();
@@ -255,12 +266,6 @@ var app = application.create('#main', {
                 var canvas = imageCuts(
                     uploadedImage, layer.lumCutoff, layer.inverse, !layer.useImage
                 );
-                if (layer.useImage) {
-                    child.material.set('color', '#fff');
-                }
-                else {
-                    child.material.set('color', stringify(layer.color, 'rgb'));
-                }
                 diffuseTexture.image = canvas;
                 diffuseTexture.dirty();
 
@@ -311,13 +316,13 @@ var scenePanel = controlKit.addPanel({ label: 'Settings', width: 250 });
 
 scenePanel.addGroup({ label: 'Papers' })
     .addNumberInput(config, 'paperCount', { label: 'Levels', onFinish: app.methods.changeLevels, step: 1, min: 0 })
-    .addSlider(config, 'paperGap', '$normalizedRange', { label: 'Gap', onChange: app.methods.updatePapers })
+    .addSlider(config, 'paperGap', '$paperGapRange', { label: 'Gap', onChange: app.methods.updatePapers })
     .addCustomComponent(TextureUI, config, 'paperDetail', { label: 'Detail', onChange: app.methods.changePaperDetailTexture })
     .addNumberInput(config, 'paperDetailTiling', { label: 'Tiling', onChange: app.methods.updatePapers, step: 0.5, min: 0 });
 
 scenePanel.addGroup({ label: 'Random Generate' })
     .addNumberInput(config, 'randomScale', { label: 'Scale', onFinish: app.methods.updateSimplexCuts, step: 1, min: 0 })
-    .addSlider(config, 'randomOffset', '$normalizedRange', { label: 'Offset', onFinish: app.methods.updateSimplexCuts })
+    .addSlider(config, 'randomOffset', '$randomOffsetRange', { label: 'Offset', onFinish: app.methods.updateSimplexCuts })
     .addButton('Generate', function () {
         updateRandomSeed();
         app.methods.changeLevels();
@@ -362,7 +367,7 @@ for (var i = 0; i < config.layers.length; i++) {
     var onChange = createOnChangeFunction(i);
     imageGroup.addSubGroup({ label: 'Layer ' + (i + 1), enable: i < 5 })
         .addCustomComponent(TextureUI, config.layers[i], 'image', { label: 'Image', onChange: onChange })
-        .addSlider(config.layers[i], 'lumCutoff', '$cutoffRange', { label: 'Cutoff', onChange: onChange })
+        .addSlider(config.layers[i], 'lumCutoff', '$cutoffRange', { label: 'Cutoff', onFinish: onChange })
         .addCheckbox(config.layers[i], 'inverse', { label: 'Inverse', onChange: onChange})
         .addCheckbox(config.layers[i], 'useImage', { label: 'Use Image', onChange: onChange});
 }

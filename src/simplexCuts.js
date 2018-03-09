@@ -2,10 +2,6 @@ import { contours } from 'd3-contour';
 import { geoPath } from 'd3-geo';
 import SimplexNoise from 'simplex-noise';
 
-function bilateralFilter() {
-
-}
-
 export default function (config, seed) {
     var simplex = new SimplexNoise(function () {
         return seed;
